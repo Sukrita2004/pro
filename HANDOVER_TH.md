@@ -84,3 +84,8 @@ flutter test
 รายงานเขียนบท งาน ETL/ฝึกซ้ำ ผลทดลองเก่า หน้า UI เก่า และ legacy web ถูกแยกเก็บไว้บน Desktop ของผู้พัฒนา ไม่ต้องติดตั้ง xgboost หรือฝึกโมเดลเพื่อรันแอป `train_demand_model.py` ที่ยังอยู่เป็น dependency สำหรับสร้าง features จึงห้ามลบทิ้งแม้ชื่อขึ้นต้น train
 
 ติดตั้งภายนอกยังต้องเตรียม server/HTTPS และสำรองแยกอุปกรณ์ ชุดนี้เปิดผ่าน loopback บนเครื่องเดียว
+
+
+## Shared Demo sample (Git)
+
+The repository includes `data/demo_sample.sqlite3`: synthetic trading records from the prepared demonstration, with all users, sessions and security audit rows removed. Run `RUN_BACKEND.ps1` to install it on first launch. Existing local Demo databases are never replaced. Each teammate must create their own Demo administrator using the locally generated setup token. The sample is a fixed snapshot; later calendar updates and trading changes are local to each machine. To install manually before launching Uvicorn, run `py -3 scripts/install_demo_sample.py`.

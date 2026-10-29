@@ -10,6 +10,8 @@ try {
         $pythonExecutable = $launcher.Source
         $pythonArguments = @('-3.11')
     }
+    & $pythonExecutable @pythonArguments -B scripts/install_demo_sample.py
+    if ($LASTEXITCODE -ne 0) { throw 'Demo sample installation failed.' }
     & $pythonExecutable @pythonArguments -B -m backend.seed_demo
     if ($LASTEXITCODE -ne 0) { throw 'Database preparation failed. See HANDOVER_TH.md.' }
     & $pythonExecutable @pythonArguments -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
