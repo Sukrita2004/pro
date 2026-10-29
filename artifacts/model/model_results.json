@@ -1,0 +1,115 @@
+{
+  "validation_trials": [
+    {
+      "parameters": {
+        "max_iter": 200,
+        "max_leaf_nodes": 7,
+        "learning_rate": 0.04,
+        "l2_regularization": 20.0,
+        "loss": "absolute_error"
+      },
+      "fold_metrics": [
+        {
+          "MAE": 4.471594702155876,
+          "RMSE": 6.036007453699229,
+          "WMAPE_percent": 27.82737018624654
+        },
+        {
+          "MAE": 4.511059808030109,
+          "RMSE": 6.0835741326534585,
+          "WMAPE_percent": 28.224701708838808
+        },
+        {
+          "MAE": 4.471885061577477,
+          "RMSE": 6.071906898314434,
+          "WMAPE_percent": 28.09268802347337
+        }
+      ],
+      "mean_MAE": 4.484846523921154
+    },
+    {
+      "parameters": {
+        "max_iter": 250,
+        "max_leaf_nodes": 15,
+        "learning_rate": 0.04,
+        "l2_regularization": 10.0,
+        "loss": "absolute_error"
+      },
+      "fold_metrics": [
+        {
+          "MAE": 4.495610255577071,
+          "RMSE": 6.062357600814478,
+          "WMAPE_percent": 27.976822392851254
+        },
+        {
+          "MAE": 4.520035072041473,
+          "RMSE": 6.095801078601813,
+          "WMAPE_percent": 28.280857947119646
+        },
+        {
+          "MAE": 4.460313304289923,
+          "RMSE": 6.058129838198219,
+          "WMAPE_percent": 28.01999345219387
+        }
+      ],
+      "mean_MAE": 4.491986210636155
+    }
+  ],
+  "selected": {
+    "parameters": {
+      "max_iter": 200,
+      "max_leaf_nodes": 7,
+      "learning_rate": 0.04,
+      "l2_regularization": 20.0,
+      "loss": "absolute_error"
+    },
+    "fold_metrics": [
+      {
+        "MAE": 4.471594702155876,
+        "RMSE": 6.036007453699229,
+        "WMAPE_percent": 27.82737018624654
+      },
+      {
+        "MAE": 4.511059808030109,
+        "RMSE": 6.0835741326534585,
+        "WMAPE_percent": 28.224701708838808
+      },
+      {
+        "MAE": 4.471885061577477,
+        "RMSE": 6.071906898314434,
+        "WMAPE_percent": 28.09268802347337
+      }
+    ],
+    "mean_MAE": 4.484846523921154
+  },
+  "metrics": {
+    "test_2025": {
+      "improve_model": {
+        "MAE": 4.483734136504954,
+        "RMSE": 6.045908044299748,
+        "WMAPE_percent": 27.923485585594882
+      },
+      "generator_aligned": {
+        "MAE": 4.478079535629298,
+        "RMSE": 6.022476639068555,
+        "WMAPE_percent": 27.888270258094053
+      }
+    },
+    "external_2026": {
+      "improve_model": {
+        "MAE": 4.4754348859756385,
+        "RMSE": 6.118970945913712,
+        "WMAPE_percent": 27.698684270233286
+      },
+      "generator_aligned": {
+        "MAE": 4.45873655933715,
+        "RMSE": 6.088166734549396,
+        "WMAPE_percent": 27.59533751417834
+      }
+    }
+  },
+  "training_cutoff": "2025-08-04",
+  "assumption": "target-day promotion schedule known before prediction",
+  "weather_features": "not present in source CSV; model predicts conditional on available features",
+  "evaluation_status": "previously observed datasets, not fresh independent holdouts"
+}

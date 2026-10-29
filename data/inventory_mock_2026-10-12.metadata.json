@@ -1,0 +1,15 @@
+{
+  "status": "MOCK_INVENTORY_NOT_ACTUAL_DATA",
+  "source": "C:\\Users\\66843\\Desktop\\pro\\data\\cutoff_test\\actuals_2026-10-11.csv",
+  "source_date": "2026-10-11",
+  "target_date": "2026-10-12",
+  "rows": 128,
+  "assumptions": [
+    "Opening stock equals previous closing; no new receipts",
+    "Expiry estimated from previous opening minimum minus one, clipped at zero",
+    "Actual surviving-batch expiry cannot be reconstructed from scalar CSV",
+    "Pending deliveries ignored; not an inventory simulation",
+    "No actual sales or baseline demand for target day are created",
+    "Only tests model/weather/engine integration, not target-day accuracy"
+  ]
+}

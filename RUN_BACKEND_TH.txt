@@ -1,0 +1,20 @@
+FreshFlow — เปิด Backend / Flutter รุ่นส่งทีม
+===========================================
+
+อ่าน HANDOVER_TH.md ก่อนเริ่ม
+
+ครั้งแรก: ติดตั้ง Python 3.11, Flutter SDK และ Chrome
+powershell -ExecutionPolicy Bypass -File .\SETUP_TEAM.ps1
+
+Terminal 1:
+powershell -ExecutionPolicy Bypass -File .\RUN_BACKEND.ps1
+
+Terminal 2:
+powershell -ExecutionPolicy Bypass -File .\RUN_FLUTTER.ps1
+
+เว็บ http://127.0.0.1:8080
+Backend http://127.0.0.1:8000/health
+
+บัญชีจริงและ Demo แยกกัน ตั้ง Administrator ครั้งแรกตาม HANDOVER_TH.md
+ไฟล์ Demo ในชุดส่งเก็บยอดทดลองไว้ แต่ไม่มีบัญชีส่วนตัวของผู้พัฒนา
+อย่าใช้ไฟล์ฐานจริง/backup ส่วนตัวแทนไฟล์ Demo

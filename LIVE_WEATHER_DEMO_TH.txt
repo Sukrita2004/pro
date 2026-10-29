@@ -1,0 +1,42 @@
+วิธีทดลอง OpenWeather จริงใน Demo
+
+วิธีแนะนำ: ตั้ง key ครั้งเดียวให้เปิด Backend จาก Terminal ใดก็ได้
+
+   cd C:\Users\66843\Desktop\pro
+   powershell -ExecutionPolicy Bypass -File .\SET_WEATHER_KEY.ps1
+
+เมื่อขึ้นข้อความให้วาง key ค่อยวาง key แล้วกด Enter ตัวอักษรจะถูกซ่อน
+ระบบบันทึกใน .env ซึ่ง Git ละเว้นอยู่แล้ว ไม่ต้องส่ง key มาในแชต
+Backend รุ่นใหม่อ่าน .env ทุกครั้งที่สร้าง OpenWeather client จึงใช้ได้แม้เปิดผ่านเครื่องมือ
+หาก Terminal มี OPENWEATHER_API_KEY ตั้งไว้ ค่านั้นจะมีลำดับความสำคัญเหนือ .env
+หากต้องการใช้ค่าจาก .env ให้ล้างค่าเก่าก่อนเปิด server:
+   Remove-Item Env:OPENWEATHER_API_KEY -ErrorAction SilentlyContinue
+
+วิธีตั้งชั่วคราวผ่าน Terminal (ทางเลือก):
+
+1. หยุด Backend เดิมด้วย Ctrl+C ใน Terminal ที่เปิด server
+2. ตั้ง API key ใน PowerShell เดียวกัน (ไม่ต้องส่ง key ให้ผู้อื่น):
+
+   $weatherSecret = Read-Host "OpenWeather API key" -AsSecureString
+   $env:OPENWEATHER_API_KEY = [System.Net.NetworkCredential]::new('', $weatherSecret).Password
+   Remove-Variable weatherSecret
+   py -3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+
+3. ในแอปเปิด DEMO DEALS แล้วเลือกสาขาและหน้า AI Forecast
+4. เปลี่ยน Mock weather เป็น OpenWeather live
+5. ระบบเลือกพิกัดให้อัตโนมัติตามสาขา Central Silom / Chidlom / Ladprao / Bangna
+   กด Check live weather now เพื่อตรวจการเชื่อม API และดูอากาศปัจจุบันได้ทันที
+6. กด Run model & recommendations
+
+เมื่อเรียกพยากรณ์สำเร็จ ผลจะแสดง Weather source: openweather_forecast
+หากเป็นวันนี้และไม่มีช่วงพยากรณ์เหลือ ระบบอาจใช้ openweather_current เฉพาะวันที่ตรงกัน
+หากวันที่อยู่นอกช่วง API จะระบุวันที่ที่รองรับ ไม่แอบเปลี่ยนวันหรือเปลี่ยนเป็น mock
+ปุ่ม Check live weather now แสดงอากาศปัจจุบันแยกจากวันที่พยากรณ์ยอดขาย
+พร้อมวันที่ อุณหภูมิ โอกาสฝน เวลา fetched_at และจำนวนช่วงเวลาที่รวมผล
+ข้อมูลนี้เป็นพยากรณ์ของวันที่เลือก ไม่ใช่การยืนยันว่ากำลังฝนตกขณะนี้
+หากฝนจาก API เข้าเงื่อนไข ระบบจะแนะนำร่ม/เสื้อกันฝนและแสดงป๊อปอัปฝั่งลูกค้า
+ตัวเลือกสถานการณ์ mock จะไม่ถูกนำมาใช้ตัดสินเมื่อเลือก live
+
+สต็อกและประวัติ Demo ยังคงเป็นข้อมูลจำลอง ส่วนอากาศมาจาก API จริง
+หาก API key ไม่ถูกต้องหรือเครือข่ายใช้ไม่ได้ ระบบจะแจ้งข้อผิดพลาด ไม่สลับเป็น mock อัตโนมัติ
+ไม่บันทึก API key ลง Git หรือไฟล์คู่มือ และต้อง restart server หลังเปลี่ยน key

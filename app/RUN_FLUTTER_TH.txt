@@ -1,0 +1,7 @@
+เปิด Terminal ที่โฟลเดอร์หลัก (โฟลเดอร์ที่มี HANDOVER_TH.md)
+powershell -ExecutionPolicy Bypass -File .\RUN_FLUTTER.ps1
+
+สคริปต์หา SDK จาก .tools ในเครื่องผู้พัฒนา หรือ FLUTTER_SDK หรือ PATH ในเครื่องทีม
+เว็บ http://127.0.0.1:8080 ต้องเปิด Backend พอร์ต 8000 ควบคู่
+กด R ตัวใหญ่เพื่อ hot restart; กด q เพื่อหยุด
+รายละเอียดบัญชีและข้อมูล Demo อยู่ใน HANDOVER_TH.md
