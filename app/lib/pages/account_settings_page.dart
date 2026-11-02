@@ -140,6 +140,91 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     phone.dispose();
   }
 
+  Future<void> _grantDemoEmployee() async {
+    final provider = context.read<AppProvider>();
+    final email = TextEditingController();
+    var role = 'staff';
+    final stores = <String>{provider.accessibleStoreIds.first};
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => AlertDialog(
+          title: const Text('Add employee role to existing Demo email'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Keep the same email and password. Employee access uses the selected branches. Sign in again after this change.',
+                ),
+                TextField(
+                  controller: email,
+                  decoration: const InputDecoration(
+                    labelText: 'Existing Demo customer email',
+                  ),
+                ),
+                if (provider.isAccountAdmin)
+                  DropdownButton<String>(
+                    value: role,
+                    items: ['staff', 'manager']
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) => update(() => role = value!),
+                  ),
+                for (final store in provider.accessibleStoreIds)
+                  CheckboxListTile(
+                    title: Text(storeName(store)),
+                    value: stores.contains(store),
+                    onChanged: (value) => update(() {
+                      if (value == true) {
+                        stores.add(store);
+                      } else {
+                        stores.remove(store);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Assign employee role'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (save == true) {
+      try {
+        await ApiService.accountRequest('POST', 'auth/demo-employee-role', {
+          'email': email.text.trim(),
+          'role': role,
+          'stores': stores.toList(),
+        });
+        if (mounted) {
+          setState(
+            () => _message =
+                'Demo role assigned. Sign in with the same email and password.',
+          );
+          await _load();
+        }
+      } catch (error) {
+        if (mounted) setState(() => _message = error.toString());
+      }
+    }
+    email.dispose();
+  }
+
   Future<void> _employee([Map<String, dynamic>? existing]) async {
     final provider = context.read<AppProvider>();
     final name = TextEditingController(text: existing?['name']);
@@ -339,6 +424,11 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
               onPressed: _busy ? null : () => _employee(),
               child: const Text('Create employee'),
             ),
+            if (ApiService.demoMode)
+              OutlinedButton(
+                onPressed: _busy ? null : _grantDemoEmployee,
+                child: const Text('Add employee role to existing Demo email'),
+              ),
             for (final user in _users)
               ListTile(
                 title: Text('${user['name']} (${user['role']})'),

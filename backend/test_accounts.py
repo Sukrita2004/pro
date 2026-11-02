@@ -123,6 +123,78 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(response.status_code,200,response.text)
         return {'Authorization':'Bearer '+response.json()['access_token']}
 
+    def test_demo_role_switch_and_existing_customer_employee_grant(self):
+        from scripts.verify_demo_accounts_preservation import fingerprints
+        self.client.post('/api/v1/demo/setup').raise_for_status()
+        demo = self.database.with_name(self.database.stem+'_demo_2026-10-12.db')
+        setup = self.client.post('/demo/api/v1/auth/setup',json={
+            'name':'Demo Owner','email':'demo-owner@example.test','password':self.password,
+            'setup_token':Path(str(demo)+'.setup-token').read_text()})
+        setup.raise_for_status()
+        owner = {'Authorization':'Bearer '+setup.json()['access_token']}
+        # Materialize legacy lot views before measuring account-only changes.
+        self.client.get('/demo/api/v1/inventory',headers=owner,params=self.scope).raise_for_status()
+        before = fingerprints(demo)
+        customer = self.client.post('/demo/api/v1/auth/register',json={
+            'name':'Same identity','email':'same@example.test','password':self.password})
+        customer.raise_for_status()
+        customer_headers = {'Authorization':'Bearer '+customer.json()['access_token']}
+        grant = {'email':'same@example.test','role':'staff','stores':['STORE_01']}
+        self.assertEqual(self.client.post('/demo/api/v1/auth/demo-employee-role',headers=customer_headers,json=grant).status_code,403)
+        self.assertEqual(self.client.post('/demo/api/v1/auth/switch-role',headers=customer_headers,json={'role':'staff'}).status_code,403)
+        self.client.post('/demo/api/v1/auth/demo-employee-role',headers=owner,json=grant).raise_for_status()
+        self.assertEqual(self.client.get('/demo/api/v1/auth/me',headers=customer_headers).status_code,401)
+        signed = self.client.post('/demo/api/v1/auth/login',json={'email':'same@example.test','password':self.password})
+        signed.raise_for_status()
+        self.assertEqual(signed.json()['user']['available_roles'],['staff','customer'])
+        staff = {'Authorization':'Bearer '+signed.json()['access_token']}
+        self.assertEqual(self.client.get('/demo/api/v1/inventory',headers=staff,params=self.scope).status_code,200)
+        self.assertEqual(self.client.get('/demo/api/v1/inventory',headers=staff,params={**self.scope,'store_id':'STORE_02'}).status_code,403)
+        switched = self.client.post('/demo/api/v1/auth/switch-role',headers=staff,json={'role':'customer'})
+        switched.raise_for_status()
+        shopper = {'Authorization':'Bearer '+switched.json()['access_token']}
+        self.assertEqual(self.client.get('/demo/api/v1/auth/me',headers=staff).status_code,401)
+        self.assertEqual(self.client.get('/demo/api/v1/inventory',headers=shopper,params=self.scope).status_code,403)
+        profile=self.client.patch('/demo/api/v1/auth/me',headers=shopper,json={'name':'Still customer','phone':''})
+        self.assertEqual(profile.json()['role'],'customer')
+        self.assertEqual(profile.json()['primary_role'],'staff')
+        self.assertEqual(self.client.post('/demo/api/v1/auth/switch-role',headers=shopper,json={'role':'admin'}).status_code,403)
+        self.client.post('/demo/api/v1/auth/switch-role',headers=shopper,json={'role':'staff'}).raise_for_status()
+        self.assertEqual(self.client.post('/api/v1/auth/switch-role',headers=self.admin,json={'role':'customer'}).status_code,403)
+        self.assertEqual(self.client.post('/api/v1/auth/demo-employee-role',headers=self.admin,json=grant).status_code,403)
+        self.assertEqual(fingerprints(demo),before)
+
+    def test_demo_admin_and_manager_can_use_staff_without_customer_privilege_escalation(self):
+        self.client.post('/api/v1/demo/setup').raise_for_status()
+        demo = self.database.with_name(self.database.stem+'_demo_2026-10-12.db')
+        signed = self.client.post('/demo/api/v1/auth/setup',json={
+            'name':'Demo Owner','email':'demo-owner@example.test','password':self.password,
+            'setup_token':Path(str(demo)+'.setup-token').read_text()})
+        signed.raise_for_status()
+        owner = {'Authorization':'Bearer '+signed.json()['access_token']}
+        self.assertIn('staff', signed.json()['user']['available_roles'])
+        self.client.post('/demo/api/v1/auth/users',headers=owner,json={
+            'name':'Manager','email':'demo-manager@example.test','password':self.password,
+            'role':'manager','stores':['STORE_01']}).raise_for_status()
+        staff = self.client.post('/demo/api/v1/auth/switch-role',headers=owner,json={'role':'staff'})
+        staff.raise_for_status()
+        staff_headers = {'Authorization':'Bearer '+staff.json()['access_token']}
+        self.assertEqual(staff.json()['user']['role'],'staff')
+        self.assertEqual(len(staff.json()['user']['stores']),4)
+        self.assertEqual(self.client.get('/demo/api/v1/inventory',headers=staff_headers,params=self.scope).status_code,200)
+        self.assertEqual(self.client.get('/demo/api/v1/admin/backups',headers=staff_headers).status_code,403)
+        self.assertEqual(self.client.get('/demo/api/v1/auth/users',headers=staff_headers).status_code,403)
+        self.client.post('/demo/api/v1/auth/switch-role',headers=staff_headers,json={'role':'admin'}).raise_for_status()
+        manager = self.client.post('/demo/api/v1/auth/login',json={'email':'demo-manager@example.test','password':self.password})
+        manager.raise_for_status()
+        manager_headers = {'Authorization':'Bearer '+manager.json()['access_token']}
+        switched = self.client.post('/demo/api/v1/auth/switch-role',headers=manager_headers,json={'role':'staff'})
+        switched.raise_for_status()
+        headers = {'Authorization':'Bearer '+switched.json()['access_token']}
+        self.assertEqual(switched.json()['user']['stores'],['STORE_01'])
+        self.assertEqual(self.client.get('/demo/api/v1/inventory',headers=headers,params={**self.scope,'store_id':'STORE_02'}).status_code,403)
+        self.assertEqual(self.client.post('/demo/api/v1/auth/switch-role',headers=headers,json={'role':'admin'}).status_code,403)
+
     def test_real_auth_not_bypassed_by_role_or_api_key_and_setup_is_single_use(self):
         self.assertFalse(Path(str(self.database)+'.setup-token').exists())
         self.assertFalse(self.client.get('/api/v1/auth/status').json()['setup_required'])

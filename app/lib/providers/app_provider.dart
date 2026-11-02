@@ -18,6 +18,17 @@ class AppProvider with ChangeNotifier {
   bool _disposed = false;
   Timer? _sessionExpiryTimer;
   bool get isAccountAdmin => currentUser?['role'] == 'admin';
+  List<String> get availableDemoRoles => ApiService.demoMode
+      ? List<String>.from(currentUser?['available_roles'] ?? [])
+      : [];
+
+  Future<void> switchDemoRole(String selected) async {
+    if (!ApiService.demoMode || !availableDemoRoles.contains(selected)) {
+      throw StateError('This Demo role is not assigned.');
+    }
+    await signInAccount('switch-role', {'role': selected}, demo: true);
+  }
+
   Future<void> updateAccountProfile(String name, String phone) async {
     currentUser = Map<String, dynamic>.from(
       await ApiService.accountRequest('PATCH', 'auth/me', {

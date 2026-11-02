@@ -69,6 +69,16 @@ class ChangePassword(BaseModel):
     new_password: SecretStr
 
 
+class DemoRole(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    role: str
+
+
+class DemoEmployeeGrant(DemoRole):
+    email: str
+    stores: list[str]
+
+
 def password_hash(password):
     if not 12 <= len(password) <= 1024:
         raise HTTPException(422, 'Use a password of 12 to 1024 characters.')
@@ -99,6 +109,9 @@ class Accounts:
             db.executescript(SCHEMA)
             if 'phone' not in {r[1] for r in db.execute('PRAGMA table_info(users)')}:
                 db.execute("ALTER TABLE users ADD COLUMN phone TEXT NOT NULL DEFAULT ''")
+            if self.is_demo:
+                db.execute('CREATE TABLE IF NOT EXISTS demo_session_roles ('
+                    'token_hash TEXT PRIMARY KEY REFERENCES auth_sessions(token_hash) ON DELETE CASCADE, role TEXT NOT NULL)')
             first = not db.execute("SELECT 1 FROM users WHERE role='admin'").fetchone()
         if first:
             try:
@@ -135,7 +148,30 @@ class Accounts:
                 'WHERE token_hash=? AND expires_at>? AND active=1',(digest,time.time())).fetchone()
         if not row:
             raise HTTPException(401, 'Session expired or revoked. Sign in again.')
-        return public_user(row)
+        user = public_user(row)
+        if self.is_demo:
+            with connect(self.database) as db:
+                selected = db.execute('SELECT role FROM demo_session_roles WHERE token_hash=?',(digest,)).fetchone()
+            user = self.demo_identity(user, selected[0] if selected else user['role'])
+        return user
+
+    def demo_identity(self, user, selected=None):
+        user = dict(user)
+        if self.is_demo:
+            primary = user.get('primary_role', user['role'])
+            roles = {
+                'admin': ['admin', 'manager', 'staff', 'customer'],
+                'manager': ['manager', 'staff', 'customer'],
+                'staff': ['staff', 'customer'],
+                'customer': ['customer'],
+            }[primary]
+            if selected is not None and selected not in roles:
+                raise HTTPException(403, 'This role is not assigned to your Demo account.')
+            user.update(primary_role=primary, available_roles=roles, role=selected or primary)
+            if primary == 'admin' and user['role'] in {'manager','staff'}:
+                with connect(self.database) as db:
+                    user['stores'] = [row[0] for row in db.execute('SELECT store_id FROM stores ORDER BY store_id')]
+        return user
 
     def check_store(self, user, store):
         if user['role'] != 'admin' and store not in user['stores']:
@@ -170,12 +206,16 @@ class Accounts:
         return public_user(row)
 
     def session(self, user):
+        user = self.demo_identity(user, user['role'])
         token = secrets.token_urlsafe(32)
         expires = time.time()+SESSION_SECONDS
         with connect(self.database) as db:
             db.execute('DELETE FROM auth_sessions WHERE expires_at<=?',(time.time(),))
             db.execute('INSERT INTO auth_sessions VALUES (?,?,?)',
                 (hashlib.sha256(token.encode()).hexdigest(),user['user_id'],expires))
+            if self.is_demo:
+                db.execute('INSERT INTO demo_session_roles VALUES (?,?)',
+                    (hashlib.sha256(token.encode()).hexdigest(),user['role']))
         return {'access_token':token,'token_type':'bearer','expires_at':expires,'user':user}
 
     def install(self, app):
@@ -295,14 +335,43 @@ class Accounts:
         def me(request: Request):
             return request.state.user
 
+        @app.post('/api/v1/auth/switch-role')
+        def switch_role(data: DemoRole, request: Request):
+            if not self.is_demo:
+                raise HTTPException(403, 'Role switching is available only in Demo.')
+            user = self.demo_identity(request.state.user, data.role)
+            digest = hashlib.sha256(request.headers['authorization'][7:].encode()).hexdigest()
+            with connect(self.database) as db:
+                db.execute('DELETE FROM auth_sessions WHERE token_hash=?',(digest,))
+            return self.session(user)
+
+        @app.post('/api/v1/auth/demo-employee-role')
+        def grant_demo_employee(data: DemoEmployeeGrant, request: Request):
+            actor = request.state.user
+            if not self.is_demo or actor['role'] not in {'admin','manager'}:
+                raise HTTPException(403, 'Demo manager access required.')
+            if data.role not in {'staff','manager'} or (actor['role']=='manager' and data.role!='staff'):
+                raise HTTPException(403, 'Only administrators can assign a manager role.')
+            self.validate_stores(data.stores)
+            for store in data.stores: self.check_store(actor,store)
+            with connect(self.database) as db:
+                db.execute('BEGIN IMMEDIATE')
+                row = db.execute('SELECT * FROM users WHERE email=?',(data.email.strip().lower(),)).fetchone()
+                if not row: raise HTTPException(404, 'Register the Demo customer account first.')
+                if row['role']!='customer' or not row['active']:
+                    raise HTTPException(409, 'Choose an active Demo customer without an employee role.')
+                db.execute('UPDATE users SET role=?,stores=? WHERE user_id=?',(data.role,encode(data.stores),row['user_id']))
+                db.execute('DELETE FROM auth_sessions WHERE user_id=?',(row['user_id'],))
+                return self.demo_identity(public_user(db.execute('SELECT * FROM users WHERE user_id=?',(row['user_id'],)).fetchone()))
+
         @app.patch('/api/v1/auth/me')
         def update_profile(data: Profile, request: Request):
             if not data.name.strip(): raise HTTPException(422,'Enter your name.')
             with connect(self.database) as db:
                 db.execute('UPDATE users SET name=?,phone=? WHERE user_id=?',
                     (data.name.strip(),data.phone.strip(),request.state.user['user_id']))
-                return public_user(db.execute('SELECT * FROM users WHERE user_id=?',
-                    (request.state.user['user_id'],)).fetchone())
+                return self.demo_identity(public_user(db.execute('SELECT * FROM users WHERE user_id=?',
+                    (request.state.user['user_id'],)).fetchone()), request.state.user['role'])
 
         @app.post('/api/v1/auth/logout')
         def logout(request: Request):

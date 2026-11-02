@@ -44,6 +44,8 @@ def main():
     snapshot(ROOT/'data/application_demo_2026-10-28.db', demo)
     before = fingerprints(demo)
     with sqlite3.connect(demo) as connection:
+        if connection.execute("SELECT 1 FROM sqlite_master WHERE name='demo_session_roles'").fetchone():
+            connection.execute('DELETE FROM demo_session_roles')
         for table in ['auth_sessions', 'auth_limits', 'security_audit', 'users']:
             connection.execute('DELETE FROM '+table)
         connection.commit()

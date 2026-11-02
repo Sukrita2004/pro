@@ -54,6 +54,29 @@ class DataContextBar extends StatelessWidget {
                     },
             ),
             Text('Snapshot: ${ApiService.defaultDate} • Prices: USD'),
+            if (provider.availableDemoRoles.length > 1)
+              PopupMenuButton<String>(
+                tooltip: 'Switch Demo role',
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text('Demo role: ${provider.currentUser?["role"]} ▾'),
+                ),
+                itemBuilder: (_) => [
+                  for (final role in provider.availableDemoRoles)
+                    PopupMenuItem(value: role, child: Text('Use as $role')),
+                ],
+                onSelected: (role) async {
+                  try {
+                    await provider.switchDemoRole(role);
+                  } catch (error) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(error.toString())));
+                    }
+                  }
+                },
+              ),
             if (ApiService.accessToken != null)
               IconButton(
                 tooltip: 'Account settings',

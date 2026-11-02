@@ -77,6 +77,28 @@ If the login screen shows a different database/token filename, use that filename
 
 The administrator can create managers and staff with assigned branches through **Account settings**. The backend enforces these assignments. Customer registration creates customer accounts only.
 
+### Switch roles using the same Demo email
+
+After signing in, use the **Demo role** menu in the top bar:
+
+- Demo Admin: Admin, Manager, Staff, or Customer.
+- Demo Manager: Manager, Staff, or Customer, with employee access limited to assigned branches.
+- Demo Staff: Staff or Customer.
+- A customer-only account cannot grant itself employee access.
+
+To add employee access to an existing Demo customer, a manager or administrator opens **Account settings → Add employee role to existing Demo email**, enters the existing email, and assigns permitted branches. Only an administrator can assign Manager. The account keeps its existing password and must sign in again after assignment. Backend authorization follows the selected role, so Staff mode cannot use management or backup permissions. Normal-mode accounts retain their original single-role behaviour.
+
+### Update an existing installation
+
+Stop your running backend and Flutter processes, then run from the repository root:
+
+```powershell
+git pull --ff-only
+powershell -ExecutionPolicy Bypass -File .\RUN_BACKEND.ps1
+```
+
+Restart `RUN_FLUTTER.ps1` in a second terminal. Reload Chrome and sign in to Demo again to load the updated role options. Existing local Demo records are preserved; do not delete your database or replace it with the shared sample to update the code.
+
 **Normal accounts are separate:** their initial setup uses `data/application.db.setup-token`. Demo credentials do not grant normal-mode access. Normal mode includes synthetic seed inventory/history for the prototype; it is not a connection to an actual store.
 
 ## 5. What to try next
@@ -111,7 +133,7 @@ flutter analyze
 flutter test
 ```
 
-The prepared copy passed 37 backend tests and 32 Flutter tests on the developer computer. This does not replace testing on your own machine. Complete [TEAM_ACCEPTANCE_CHECKLIST.md](TEAM_ACCEPTANCE_CHECKLIST.md), and report the step, expected result, actual result, and a screenshot if something fails. Do not include passwords or setup tokens.
+The Demo role update passed 39 backend tests and 33 Flutter tests on the developer computer. This does not replace testing on your own machine. Complete [TEAM_ACCEPTANCE_CHECKLIST.md](TEAM_ACCEPTANCE_CHECKLIST.md), and report the step, expected result, actual result, and a screenshot if something fails. Do not include passwords or setup tokens.
 
 ## Troubleshooting
 
@@ -125,6 +147,15 @@ The prepared copy passed 37 backend tests and 32 Flutter tests on the developer 
 | Chrome says `No client connected` or shows a debugger context error | Stop the Flutter command with `Ctrl+C`, rerun `RUN_FLUTTER.ps1`, and use the newly opened Chrome tab. |
 | Demo setup token is missing | Start the backend first. If an administrator already exists, log in instead of creating another. |
 | Existing Demo has different quantities | Existing records are deliberately preserved. Do not delete the database to reset it; back up first and ask the team before replacing data. |
+
+If Chrome debugger connection still fails, stop the old Flutter process and serve the application directly:
+
+```powershell
+cd app
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8080
+```
+
+Wait until Flutter prints that `lib/main.dart` is being served, then open http://127.0.0.1:8080 in Chrome. An HTTP response during compilation does not mean the application has finished loading. Keep the backend running in its separate terminal.
 
 ## Data, weather, and project scope
 
